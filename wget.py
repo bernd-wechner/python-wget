@@ -74,7 +74,7 @@ def filename_fix_existing(filename):
     return filename that doesn't exist already.
     """
     dirname = '.' 
-    name, ext = filename.rsplit('.', 1)
+    name, ext = os.path.splitext(filename)
     names = [x for x in os.listdir(dirname) if x.startswith(name)]
     names = [x.rsplit('.', 1)[0] for x in names]
     suffixes = [x.replace(name, '') for x in names]
@@ -86,7 +86,7 @@ def filename_fix_existing(filename):
     idx = 1
     if indexes:
         idx += sorted(indexes)[-1]
-    return '%s (%d).%s' % (name, idx, ext)
+    return '%s (%d)%s' % (name, idx, ext)
 
 
 # --- terminal/console output helpers ---
@@ -283,7 +283,7 @@ class ThrowOnErrorOpener(urllib.FancyURLopener):
     def http_error_default(self, url, fp, errcode, errmsg, headers):
         raise Exception("%s: %s" % (errcode, errmsg))
 
-def download(url, out=None, bar=bar_adaptive, size=-1):
+def download(url, out=None, bar=bar_adaptive, size=-1, headers={}):
     """High level function, which downloads URL into tmp file in current
     directory and then renames it to filename autodetected from either URL
     or HTTP headers.
@@ -310,7 +310,11 @@ def download(url, out=None, bar=bar_adaptive, size=-1):
     else:
         callback = None
 
-    (tmpfile, headers) = ThrowOnErrorOpener().retrieve(url, tmpfile, callback)
+    opener = ThrowOnErrorOpener()
+    for h in headers:
+        opener.addheader(h, headers[h])
+         
+    (tmpfile, headers) = opener.retrieve(url, tmpfile, callback)
     names["header"] = filename_from_headers(headers)
     if os.path.isdir(names["out"]):
         filename = names["header"] or names["url"]
